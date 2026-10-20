@@ -38,14 +38,60 @@ st.markdown("""
     /* Google Fonts Import */
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
-    /* CSS Reset & Hide Default Streamlit Chrome */
+    /* CSS Reset & Hide Streamlit Default Chrome without hiding the Sidebar Toggle */
     #MainMenu {visibility: hidden !important; display: none !important;}
-    header {visibility: hidden !important; display: none !important;}
     footer {visibility: hidden !important; display: none !important;}
     .stDeployButton {display: none !important;}
     [data-testid="stToolbar"] {display: none !important;}
     [data-testid="stDecoration"] {display: none !important;}
     [data-testid="stStatusWidget"] {display: none !important;}
+
+    /* Make header transparent so it doesn't occlude content, but keeps sidebar control clickable */
+    header {
+        background: transparent !important;
+        height: 2.8rem !important;
+        z-index: 99999 !important;
+    }
+
+    /* Prominently style the Sidebar Open/Close button (collapsed & expanded controls) */
+    [data-testid="stSidebarCollapsedControl"],
+    [data-testid="collapsedControl"],
+    [data-testid="stSidebarCollapseButton"] button,
+    button[kind="header"] {
+        visibility: visible !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background-color: #252836 !important;
+        color: #00A896 !important;
+        border: 1px solid rgba(0, 168, 150, 0.4) !important;
+        border-radius: 8px !important;
+        padding: 5px !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35) !important;
+        transition: all 0.2s ease !important;
+        cursor: pointer !important;
+        z-index: 1000000 !important;
+    }
+
+    [data-testid="stSidebarCollapsedControl"]:hover,
+    [data-testid="collapsedControl"]:hover,
+    [data-testid="stSidebarCollapseButton"] button:hover,
+    button[kind="header"]:hover {
+        background-color: #2F3346 !important;
+        border-color: #3A86FF !important;
+        color: #02c39a !important;
+        transform: scale(1.05);
+    }
+
+    /* Style the SVGs inside the sidebar control */
+    [data-testid="stSidebarCollapsedControl"] svg,
+    [data-testid="collapsedControl"] svg,
+    [data-testid="stSidebarCollapseButton"] svg {
+        fill: #00A896 !important;
+        stroke: #00A896 !important;
+        width: 18px !important;
+        height: 18px !important;
+    }
 
     /* Root Palette & Typography */
     :root {
