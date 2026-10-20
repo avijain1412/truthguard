@@ -42,9 +42,20 @@ st.markdown("""
     #MainMenu {visibility: hidden !important; display: none !important;}
     footer {visibility: hidden !important; display: none !important;}
     .stDeployButton {display: none !important;}
-    [data-testid="stToolbar"] {display: none !important;}
     [data-testid="stDecoration"] {display: none !important;}
     [data-testid="stStatusWidget"] {display: none !important;}
+    [data-testid="stToolbarActions"] {display: none !important;}
+
+    /* Keep stToolbar container visible and positioned so stExpandSidebarButton is always accessible */
+    [data-testid="stToolbar"] {
+        visibility: visible !important;
+        display: flex !important;
+        background: transparent !important;
+        top: 0.6rem !important;
+        left: 0.6rem !important;
+        right: auto !important;
+        z-index: 1000000 !important;
+    }
 
     /* Make header transparent so it doesn't occlude content, but keeps sidebar control clickable */
     header {
@@ -53,11 +64,50 @@ st.markdown("""
         z-index: 99999 !important;
     }
 
-    /* Prominently style the Sidebar Open/Close button (collapsed & expanded controls) */
+    /* Prominently style the Expand Sidebar button (when sidebar is closed/collapsed) */
+    [data-testid="stExpandSidebarButton"],
+    button[data-testid="stExpandSidebarButton"],
     [data-testid="stSidebarCollapsedControl"],
-    [data-testid="collapsedControl"],
-    [data-testid="stSidebarCollapseButton"] button,
-    button[kind="header"] {
+    [data-testid="collapsedControl"] {
+        visibility: visible !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background-color: #252836 !important;
+        color: #00A896 !important;
+        border: 1.5px solid rgba(0, 168, 150, 0.6) !important;
+        border-radius: 8px !important;
+        width: 38px !important;
+        height: 38px !important;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45) !important;
+        cursor: pointer !important;
+        transition: all 0.2s ease !important;
+        z-index: 1000001 !important;
+    }
+
+    [data-testid="stExpandSidebarButton"]:hover,
+    button[data-testid="stExpandSidebarButton"]:hover,
+    [data-testid="stSidebarCollapsedControl"]:hover,
+    [data-testid="collapsedControl"]:hover {
+        background-color: #2F3346 !important;
+        border-color: #3A86FF !important;
+        color: #02c39a !important;
+        transform: scale(1.08) !important;
+    }
+
+    [data-testid="stExpandSidebarButton"] svg,
+    button[data-testid="stExpandSidebarButton"] svg,
+    [data-testid="stSidebarCollapsedControl"] svg,
+    [data-testid="collapsedControl"] svg {
+        fill: #00A896 !important;
+        stroke: #00A896 !important;
+        color: #00A896 !important;
+        width: 22px !important;
+        height: 22px !important;
+    }
+
+    /* Style the Collapse button inside the open sidebar */
+    [data-testid="stSidebarCollapseButton"] button {
         visibility: visible !important;
         display: flex !important;
         align-items: center !important;
@@ -66,31 +116,23 @@ st.markdown("""
         color: #00A896 !important;
         border: 1px solid rgba(0, 168, 150, 0.4) !important;
         border-radius: 8px !important;
-        padding: 5px !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35) !important;
+        padding: 6px !important;
         transition: all 0.2s ease !important;
         cursor: pointer !important;
-        z-index: 1000000 !important;
     }
 
-    [data-testid="stSidebarCollapsedControl"]:hover,
-    [data-testid="collapsedControl"]:hover,
-    [data-testid="stSidebarCollapseButton"] button:hover,
-    button[kind="header"]:hover {
+    [data-testid="stSidebarCollapseButton"] button:hover {
         background-color: #2F3346 !important;
         border-color: #3A86FF !important;
-        color: #02c39a !important;
-        transform: scale(1.05);
+        transform: scale(1.05) !important;
     }
 
-    /* Style the SVGs inside the sidebar control */
-    [data-testid="stSidebarCollapsedControl"] svg,
-    [data-testid="collapsedControl"] svg,
     [data-testid="stSidebarCollapseButton"] svg {
         fill: #00A896 !important;
         stroke: #00A896 !important;
-        width: 18px !important;
-        height: 18px !important;
+        color: #00A896 !important;
+        width: 20px !important;
+        height: 20px !important;
     }
 
     /* Root Palette & Typography */
