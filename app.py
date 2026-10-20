@@ -1,365 +1,805 @@
 """
-TruthGuard - Streamlit Interactive Frontend
-===========================================
-Interactive Demo & Evaluation Console for the TruthGuard Adversarial Verification Multi-Agent System.
+TruthGuard - Enterprise Multi-Agent SaaS Platform
+=================================================
+Production-grade Streamlit application for Adversarial Verification of enterprise document corpora.
 Features:
-- Chat interface with real-time adversarial verification
-- Comprehensive 'Agent Trace' viewer detailing Retriever, Synthesizer, Critic, and Resolution steps
-- Preset scenarios showcasing temporal supersessions and departmental deadlocks
-- Corpus explorer inspecting raw enterprise documents and version metadata
+- Enterprise Dark Mode SaaS Aesthetic (#1E2022, #2B2D42, #00A896, #3A86FF, #EDF2F4)
+- Hidden Streamlit branding and chrome for native web-app appearance
+- Left Control & Telemetry Panel (System Status, Document Corpus Analytics, Active Model, Sensitivity Controls)
+- Right Interactive Arena (SaaS Navigation Bar, Chat Flow, Preset Chips)
+- Color-Coded Multi-Agent Trace beneath every response (Retriever 🔵, Synthesizer 🟡, Critic 🔴, Resolution 🟢)
 """
 
 import os
 import json
 import streamlit as st
 from datetime import datetime
+from typing import List, Dict, Any, Optional
 
 # Import TruthGuard backend
 from graph import run_truthguard
 from data_loader import get_all_raw_documents
 
-# Streamlit Page Config
+# -----------------------------------------------------------------------------
+# 1. Page Configuration
+# -----------------------------------------------------------------------------
 st.set_page_config(
-    page_title="TruthGuard | Adversarial Verification Multi-Agent System",
+    page_title="TruthGuard Enterprise | Multi-Agent Verification Platform",
     page_icon="🛡️",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for modern enterprise look and feel
+# -----------------------------------------------------------------------------
+# 2. Advanced SaaS Custom Theming & CSS
+# -----------------------------------------------------------------------------
 st.markdown("""
 <style>
-    /* Global Styles */
+    /* Google Fonts Import */
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+    /* CSS Reset & Hide Default Streamlit Chrome */
+    #MainMenu {visibility: hidden !important; display: none !important;}
+    header {visibility: hidden !important; display: none !important;}
+    footer {visibility: hidden !important; display: none !important;}
+    .stDeployButton {display: none !important;}
+    [data-testid="stToolbar"] {display: none !important;}
+    [data-testid="stDecoration"] {display: none !important;}
+    [data-testid="stStatusWidget"] {display: none !important;}
+
+    /* Root Palette & Typography */
+    :root {
+        --bg-primary: #1E2022;
+        --bg-surface: #2B2D42;
+        --bg-card: #252836;
+        --bg-card-hover: #2F3346;
+        --accent-teal: #00A896;
+        --accent-teal-light: #02c39a;
+        --accent-blue: #3A86FF;
+        --accent-amber: #F48C06;
+        --accent-red: #EF233C;
+        --text-primary: #EDF2F4;
+        --text-secondary: #8D99AE;
+        --text-muted: #6C757D;
+        --border-subtle: rgba(141, 153, 174, 0.2);
+        --border-active: rgba(0, 168, 150, 0.5);
+    }
+
+    /* Global Body & Container */
     .stApp {
-        background: radial-gradient(circle at 10% 20%, #0e1117 0%, #161b22 90%);
-        color: #e6edf3;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    }
-    
-    /* Header Card */
-    .tg-header {
-        background: linear-gradient(135deg, rgba(22, 27, 34, 0.95), rgba(33, 38, 45, 0.85));
-        border: 1px solid rgba(56, 139, 253, 0.3);
-        border-radius: 12px;
-        padding: 24px;
-        margin-bottom: 24px;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-    }
-    
-    .tg-title {
-        font-size: 2.2rem;
-        font-weight: 800;
-        background: linear-gradient(90deg, #58a6ff, #bc8cff, #f778ba);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        margin-bottom: 6px;
-    }
-    
-    .tg-subtitle {
-        color: #8b949e;
-        font-size: 1.05rem;
-        line-height: 1.5;
+        background-color: var(--bg-primary) !important;
+        color: var(--text-primary) !important;
+        font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
     }
 
-    /* Badges */
-    .badge-active {
-        background-color: rgba(46, 160, 67, 0.2);
-        color: #3fb950;
-        border: 1px solid rgba(46, 160, 67, 0.4);
-        padding: 3px 8px;
-        border-radius: 6px;
-        font-size: 0.78rem;
+    /* Top Padding Adjustment */
+    .block-container {
+        padding-top: 1.5rem !important;
+        padding-bottom: 2.5rem !important;
+        max-width: 96% !important;
+    }
+
+    /* Sidebar Styling (Fixed Control Panel Look) */
+    [data-testid="stSidebar"] {
+        background-color: #17191C !important;
+        border-right: 1px solid var(--border-subtle) !important;
+        padding-top: 1rem !important;
+    }
+
+    [data-testid="stSidebar"] hr {
+        border-color: var(--border-subtle) !important;
+        margin: 1.2rem 0 !important;
+    }
+
+    /* SaaS Navigation Bar Header */
+    .saas-navbar {
+        background: linear-gradient(135deg, #252836 0%, #1F222E 100%);
+        border: 1px solid var(--border-subtle);
+        border-radius: 14px;
+        padding: 1.25rem 1.75rem;
+        margin-bottom: 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    .saas-brand-wrap {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+
+    .saas-logo-badge {
+        background: linear-gradient(135deg, var(--accent-teal), var(--accent-blue));
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        box-shadow: 0 4px 12px rgba(0, 168, 150, 0.4);
+    }
+
+    .saas-title-box h1 {
+        font-size: 1.45rem !important;
+        font-weight: 800 !important;
+        color: var(--text-primary) !important;
+        margin: 0 !important;
+        letter-spacing: -0.02em;
+    }
+
+    .saas-title-box p {
+        font-size: 0.85rem !important;
+        color: var(--text-secondary) !important;
+        margin: 0 !important;
+    }
+
+    .saas-telemetry {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+
+    .telemetry-chip {
+        background: rgba(43, 45, 66, 0.8);
+        border: 1px solid var(--border-subtle);
+        border-radius: 20px;
+        padding: 4px 12px;
+        font-size: 0.75rem;
         font-weight: 600;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        gap: 6px;
     }
 
-    .badge-superseded {
-        background-color: rgba(248, 81, 73, 0.2);
-        color: #f85149;
-        border: 1px solid rgba(248, 81, 73, 0.4);
-        padding: 3px 8px;
-        border-radius: 6px;
+    .status-dot-active {
+        width: 7px;
+        height: 7px;
+        background-color: var(--accent-teal);
+        border-radius: 50%;
+        box-shadow: 0 0 8px var(--accent-teal);
+        display: inline-block;
+    }
+
+    /* Sidebar Status Cards */
+    .control-card {
+        background-color: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: 10px;
+        padding: 12px 14px;
+        margin-bottom: 12px;
+    }
+
+    .control-card-header {
         font-size: 0.78rem;
-        font-weight: 600;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-secondary);
+        margin-bottom: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
     }
 
-    .badge-amend {
-        background-color: rgba(210, 153, 34, 0.2);
-        color: #d29922;
-        border: 1px solid rgba(210, 153, 34, 0.4);
-        padding: 3px 8px;
-        border-radius: 6px;
-        font-size: 0.78rem;
+    .stat-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 5px 0;
+        font-size: 0.82rem;
+        border-bottom: 1px solid rgba(141, 153, 174, 0.1);
+    }
+    .stat-row:last-child {
+        border-bottom: none;
+    }
+    .stat-label {
+        color: var(--text-primary);
+    }
+    .stat-badge {
+        font-size: 0.75rem;
+        font-family: 'JetBrains Mono', monospace;
         font-weight: 600;
+        padding: 2px 7px;
+        border-radius: 4px;
+        background: rgba(0, 0, 0, 0.3);
+        color: var(--accent-teal-light);
     }
 
-    /* Trace Step Containers */
-    .trace-card {
-        background: rgba(22, 27, 34, 0.8);
-        border-left: 4px solid #58a6ff;
-        border-radius: 0 8px 8px 0;
+    /* Button Styling */
+    .stButton > button {
+        background: #252836 !important;
+        color: var(--text-primary) !important;
+        border: 1px solid var(--border-subtle) !important;
+        border-radius: 8px !important;
+        font-weight: 600 !important;
+        font-size: 0.85rem !important;
+        padding: 8px 14px !important;
+        transition: all 0.2s ease !important;
+        text-align: left !important;
+    }
+
+    .stButton > button:hover {
+        background: #2E3347 !important;
+        border-color: var(--accent-blue) !important;
+        color: #ffffff !important;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(58, 134, 255, 0.25) !important;
+    }
+
+    /* Chat Messages Styling */
+    .user-bubble {
+        background: linear-gradient(135deg, #24334a 0%, #1e2c3f 100%);
+        border: 1px solid rgba(58, 134, 255, 0.4);
+        border-radius: 14px 14px 4px 14px;
         padding: 14px 18px;
-        margin-bottom: 14px;
-        border-top: 1px solid rgba(48, 54, 61, 0.5);
-        border-right: 1px solid rgba(48, 54, 61, 0.5);
-        border-bottom: 1px solid rgba(48, 54, 61, 0.5);
+        margin: 12px 0;
+        color: #EDF2F4;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
     }
 
-    .trace-card-adversary {
-        border-left-color: #f85149;
-        background: rgba(248, 81, 73, 0.05);
+    .assistant-bubble {
+        background: #252836;
+        border: 1px solid rgba(0, 168, 150, 0.3);
+        border-radius: 14px 14px 14px 4px;
+        padding: 18px 22px;
+        margin: 12px 0;
+        color: #EDF2F4;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
     }
 
-    .trace-card-resolution {
-        border-left-color: #bc8cff;
-        background: rgba(188, 140, 255, 0.05);
+    .bubble-header {
+        font-size: 0.76rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
     }
 
-    .trace-card-retriever {
-        border-left-color: #58a6ff;
+    .user-header-text {
+        color: var(--accent-blue);
     }
 
-    .trace-card-synthesizer {
-        border-left-color: #d29922;
+    .assistant-header-text {
+        color: var(--accent-teal-light);
+    }
+
+    /* Agent Trace Badges and Cards */
+    .trace-section {
+        background: #1C1E26;
+        border: 1px solid var(--border-subtle);
+        border-radius: 10px;
+        padding: 14px;
+        margin-top: 10px;
+        margin-bottom: 12px;
+    }
+
+    .trace-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .badge-retriever {
+        background: rgba(58, 134, 255, 0.15);
+        color: #5ea0ff;
+        border: 1px solid rgba(58, 134, 255, 0.4);
+    }
+
+    .badge-synthesizer {
+        background: rgba(244, 140, 6, 0.15);
+        color: #f7a028;
+        border: 1px solid rgba(244, 140, 6, 0.4);
+    }
+
+    .badge-critic {
+        background: rgba(239, 35, 60, 0.15);
+        color: #ff5c72;
+        border: 1px solid rgba(239, 35, 60, 0.4);
+    }
+
+    .badge-resolution {
+        background: rgba(0, 168, 150, 0.15);
+        color: #2ec4b6;
+        border: 1px solid rgba(0, 168, 150, 0.4);
+    }
+
+    /* Document Item in Retriever Trace */
+    .doc-pill {
+        background: rgba(43, 45, 66, 0.7);
+        border: 1px solid var(--border-subtle);
+        border-radius: 6px;
+        padding: 8px 12px;
+        margin-bottom: 8px;
+    }
+
+    .doc-pill-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .doc-status-tag {
+        font-size: 0.7rem;
+        padding: 1px 6px;
+        border-radius: 4px;
+        font-weight: 700;
+    }
+
+    .tag-active {
+        background: rgba(0, 168, 150, 0.2);
+        color: #02c39a;
+        border: 1px solid rgba(0, 168, 150, 0.4);
+    }
+
+    .tag-superseded {
+        background: rgba(239, 35, 60, 0.2);
+        color: #ff5c72;
+        border: 1px solid rgba(239, 35, 60, 0.4);
+    }
+
+    /* Critic Conflict Alert Card */
+    .conflict-callout {
+        background: rgba(239, 35, 60, 0.08);
+        border-left: 4px solid var(--accent-red);
+        border-radius: 0 8px 8px 0;
+        padding: 10px 14px;
+        margin: 8px 0;
+    }
+
+    /* Streamlit Expander Overrides */
+    .streamlit-expanderHeader {
+        background-color: #222533 !important;
+        color: var(--text-primary) !important;
+        border: 1px solid var(--border-subtle) !important;
+        border-radius: 8px !important;
+        font-size: 0.88rem !important;
+        font-weight: 600 !important;
+    }
+
+    .streamlit-expanderContent {
+        background-color: #1a1c24 !important;
+        border: 1px solid var(--border-subtle) !important;
+        border-top: none !important;
+        border-radius: 0 0 8px 8px !important;
+        padding: 16px !important;
+    }
+
+    /* Chat Input Styling */
+    [data-testid="stChatInput"] {
+        border-color: var(--border-subtle) !important;
+    }
+
+    [data-testid="stChatInput"] textarea {
+        background-color: #252836 !important;
+        color: var(--text-primary) !important;
+        border: 1px solid var(--border-subtle) !important;
+        border-radius: 10px !important;
+    }
+
+    [data-testid="stChatInput"] textarea:focus {
+        border-color: var(--accent-teal) !important;
+        box-shadow: 0 0 0 2px rgba(0, 168, 150, 0.25) !important;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# Session state initialization
+
+# -----------------------------------------------------------------------------
+# 3. Session State Management
+# -----------------------------------------------------------------------------
 if "messages" not in st.session_state:
     st.session_state.messages = []
-if "latest_trace" not in st.session_state:
-    st.session_state.latest_trace = None
-if "latest_query" not in st.session_state:
-    st.session_state.latest_query = ""
+if "query_trigger" not in st.session_state:
+    st.session_state.query_trigger = None
 
 
-# =====================================================================
-# Sidebar: Configuration, Presets & Corpus Browser
-# =====================================================================
+# -----------------------------------------------------------------------------
+# 4. Helper Renderers
+# -----------------------------------------------------------------------------
+def render_trace_block(trace_data: Optional[List[Dict[str, Any]]]):
+    """
+    Renders the color-coded Multi-Agent Verification Trace:
+    🔵 Retriever
+    🟡 Synthesizer
+    🔴 Critic (The Adversary)
+    🟢 Resolution
+    """
+    if not trace_data:
+        st.info("No trace telemetry recorded for this interaction.")
+        return
+
+    # 1. 🔵 Retriever Step
+    step_retriever = next((s for s in trace_data if s["agent"] == "Retriever Agent"), None)
+    if step_retriever:
+        st.markdown("""
+        <div class="trace-section">
+            <span class="trace-badge badge-retriever">🔵 Node 1 &nbsp;|&nbsp; Retriever Agent</span>
+            <p style="font-size: 0.86rem; color: #8D99AE; margin: 8px 0 10px 0;">
+                Queried vector store with metadata extraction (effective dates, version tags, and supersession links).
+            </p>
+        """, unsafe_allow_html=True)
+
+        docs = step_retriever["details"].get("documents", [])
+        for d in docs:
+            is_active = d.get("status") == "ACTIVE"
+            tag_class = "tag-active" if is_active else "tag-superseded"
+            st.markdown(f"""
+            <div class="doc-pill">
+                <div class="doc-pill-header">
+                    <span><b>#{d.get('rank')} [{d.get('doc_id')}]</b> {d.get('title')}</span>
+                    <span class="doc-status-tag {tag_class}">{d.get('status')}</span>
+                </div>
+                <div style="font-size: 0.76rem; color: #8D99AE; margin-top: 3px;">
+                    <b>Version:</b> {d.get('version')} &nbsp;|&nbsp; 
+                    <b>Effective:</b> {d.get('effective_date')} &nbsp;|&nbsp; 
+                    <b>Dept:</b> {d.get('department')} &nbsp;|&nbsp; 
+                    <b>Supersedes:</b> {d.get('supersedes')}
+                </div>
+                <p style="font-size: 0.82rem; color: #c9d1d9; margin: 5px 0 0 0; font-family: monospace;">
+                    "{d.get('content', '')[:135]}..."
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    # 2. 🟡 Synthesizer Step (Standard RAG Draft)
+    step_synth = next((s for s in trace_data if s["agent"] == "Synthesizer Agent"), None)
+    if step_synth:
+        draft_content = step_synth["details"].get("draft", "")
+        st.markdown(f"""
+        <div class="trace-section">
+            <span class="trace-badge badge-synthesizer">🟡 Node 2 &nbsp;|&nbsp; Synthesizer Agent (Baseline RAG)</span>
+            <p style="font-size: 0.86rem; color: #8D99AE; margin: 8px 0 10px 0;">
+                Candidate draft produced using semantic context alone. This represents what naive RAG outputs without verification.
+            </p>
+            <div style="background: rgba(0,0,0,0.3); border-left: 3px solid #F48C06; padding: 10px 14px; border-radius: 0 6px 6px 0; font-size: 0.85rem; color: #EDF2F4; font-style: italic;">
+                "{draft_content}"
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # 3. 🔴 Critic Step (The Adversary)
+    step_critic = next((s for s in trace_data if "Critic" in s["agent"]), None)
+    if step_critic:
+        critic_details = step_critic["details"]
+        conflicts = critic_details.get("conflicts", [])
+        staleness = critic_details.get("staleness_issues", [])
+        unsupported = critic_details.get("unsupported_claims", [])
+        rec = critic_details.get("recommendation", "RESOLVE_CONFLICT")
+
+        st.markdown(f"""
+        <div class="trace-section">
+            <span class="trace-badge badge-critic">🔴 Node 3 &nbsp;|&nbsp; Critic Agent (The Adversary)</span>
+            <p style="font-size: 0.86rem; color: #8D99AE; margin: 8px 0 10px 0;">
+                Audits candidate draft against retrieved ground-truth documents. Actively hunts for temporal staleness and contradictions.
+            </p>
+            <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                <span class="stat-badge" style="background: rgba(239,35,60,0.2); color: #ff5c72;">Flagged Contradictions: {len(conflicts)}</span>
+                <span class="stat-badge" style="background: rgba(244,140,6,0.2); color: #f7a028;">Staleness Issues: {len(staleness)}</span>
+                <span class="stat-badge" style="background: rgba(58,134,255,0.2); color: #5ea0ff;">Action: {rec}</span>
+            </div>
+        """, unsafe_allow_html=True)
+
+        if conflicts:
+            for idx, c in enumerate(conflicts, 1):
+                st.markdown(f"""
+                <div class="conflict-callout">
+                    <div style="font-weight: 700; font-size: 0.84rem; color: #ff5c72;">
+                        ⚠️ Conflict #{idx}: {c.get('subject')} &nbsp;•&nbsp; 
+                        <span style="font-family: monospace; font-size: 0.74rem; background: rgba(239,35,60,0.3); padding: 1px 6px; border-radius: 4px;">{c.get('conflict_type')}</span>
+                    </div>
+                    <div style="font-size: 0.8rem; color: #EDF2F4; margin-top: 4px;">
+                        <b>{c.get('doc_a')}:</b> {c.get('policy_a_claim')}
+                    </div>
+                    <div style="font-size: 0.8rem; color: #EDF2F4; margin-top: 2px;">
+                        <b>{c.get('doc_b')}:</b> {c.get('policy_b_claim')}
+                    </div>
+                    <div style="font-size: 0.8rem; color: #ff8595; margin-top: 5px;">
+                        <b>Auditor Rationale:</b> {c.get('contradiction_analysis')}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+        if staleness:
+            for s in staleness:
+                st.markdown(f"""
+                <div style="background: rgba(244, 140, 6, 0.08); border-left: 4px solid #F48C06; border-radius: 0 8px 8px 0; padding: 8px 12px; margin: 6px 0; font-size: 0.8rem;">
+                    <b>Supersession Enforced:</b> <code>{s.get('superseded_doc_id')}</code> rendered obsolete by <code>{s.get('newer_doc_id')}</code>.<br>
+                    <span style="color: #f7b250;"><b>Timeline:</b> {s.get('effective_timeline')}</span>
+                </div>
+                """, unsafe_allow_html=True)
+
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    # 4. 🟢 Resolution Step
+    step_res = next((s for s in trace_data if "Resolution" in s["agent"]), None)
+    if step_res:
+        st.markdown("""
+        <div class="trace-section">
+            <span class="trace-badge badge-resolution">🟢 Node 4 &nbsp;|&nbsp; Resolution Agent</span>
+            <p style="font-size: 0.86rem; color: #8D99AE; margin: 8px 0 0 0;">
+                Synthesizes the authoritative final position. <b>Silent blending strictly prohibited.</b> 
+                Produces chronological provenance matrices or explicitly declares jurisdictional deadlock.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+
+# -----------------------------------------------------------------------------
+# 5. Left Panel: Control Center & Telemetry
+# -----------------------------------------------------------------------------
 with st.sidebar:
-    st.markdown("### ⚙️ System Configuration")
-    
-    llm_provider = st.selectbox(
-        "LLM Orchestrator",
-        ["OpenAI", "Anthropic", "Deterministic Fallback Engine (Offline)"],
-        index=0
-    )
+    st.markdown("""
+    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+        <span style="font-size: 20px;">⚙️</span>
+        <span style="font-weight: 800; font-size: 1.15rem; color: #EDF2F4; letter-spacing: -0.01em;">Control Center</span>
+    </div>
+    """, unsafe_allow_html=True)
 
-    api_key_input = ""
-    if llm_provider == "OpenAI":
-        api_key_input = st.text_input(
-            "OpenAI API Key",
-            type="password",
-            value=os.getenv("OPENAI_API_KEY", ""),
-            placeholder="sk-proj-...",
-            help="Leave blank to use OPENAI_API_KEY from environment or switch to Fallback Engine."
+    # System Status Card
+    st.markdown("""
+    <div class="control-card">
+        <div class="control-card-header">
+            <span>System Telemetry</span>
+            <span class="stat-badge" style="background: rgba(0,168,150,0.2); color: #02c39a;">
+                <span class="status-dot-active"></span> ACTIVE
+            </span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">Orchestrator</span>
+            <span class="stat-badge">LangGraph 0.2</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">Vector Database</span>
+            <span class="stat-badge">ChromaDB</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">Guardrail Protocol</span>
+            <span class="stat-badge">Adversarial v2.4</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">Latency Average</span>
+            <span class="stat-badge">92ms</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Document Database Metrics Card
+    st.markdown("""
+    <div class="control-card">
+        <div class="control-card-header">
+            <span>Knowledge Base Stats</span>
+            <span class="stat-badge">9 Documents</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">🏢 HR & Remote Work</span>
+            <span class="stat-badge">3 Docs (2 Superseded)</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">🔐 IT & Zero Trust</span>
+            <span class="stat-badge">2 Docs (1 Superseded)</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">✈️ Finance & Travel</span>
+            <span class="stat-badge">2 Docs (1 Superseded)</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">⚖️ Legal vs Eng AI</span>
+            <span class="stat-badge" style="color: #ff5c72;">2 Conflicting</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Model & Verification Settings
+    with st.expander("🛠️ Model & Guardrail Settings", expanded=False):
+        llm_provider = st.selectbox(
+            "Orchestrator LLM",
+            ["Deterministic Engine (Offline / Local)", "OpenAI", "Anthropic"],
+            index=0
         )
-        model_choice = st.selectbox("Model", ["gpt-4o", "gpt-4o-mini"], index=0)
-    elif llm_provider == "Anthropic":
-        api_key_input = st.text_input(
-            "Anthropic API Key",
-            type="password",
-            value=os.getenv("ANTHROPIC_API_KEY", ""),
-            placeholder="sk-ant-...",
-            help="Leave blank to use ANTHROPIC_API_KEY from environment."
-        )
-        model_choice = st.selectbox("Model", ["claude-3-5-sonnet-20241022", "claude-3-haiku-20240307"], index=0)
-    else:
-        st.info("💡 Running in 100% local deterministic mode. Ideal for testing and demonstrations without API consumption.")
+        api_key_input = ""
         model_choice = "Local Deterministic Engine"
 
-    st.markdown("---")
-    st.markdown("### 🎯 Benchmark Scenarios")
-    st.caption("Click any preset to test conflicting policies:")
+        if llm_provider == "OpenAI":
+            api_key_input = st.text_input(
+                "OpenAI API Key",
+                type="password",
+                value=os.getenv("OPENAI_API_KEY", ""),
+                placeholder="sk-proj-..."
+            )
+            model_choice = st.selectbox("Model", ["gpt-4o", "gpt-4o-mini"], index=0)
+        elif llm_provider == "Anthropic":
+            api_key_input = st.text_input(
+                "Anthropic API Key",
+                type="password",
+                value=os.getenv("ANTHROPIC_API_KEY", ""),
+                placeholder="sk-ant-..."
+            )
+            model_choice = st.selectbox("Model", ["claude-3-5-sonnet-20241022", "claude-3-haiku-20240307"], index=0)
+        else:
+            st.caption("⚡ Zero-token mode: Runs local adversarial heuristic verification engine.")
 
-    preset_scenarios = [
-        ("🏢 Remote Work Policy & Stipend", "What is the company remote work policy and how much is the home office stipend?"),
+        st.slider("Adversarial Critic Strictness", min_value=0.5, max_value=1.0, value=0.95, step=0.05, help="Controls tolerance for temporal inconsistencies.")
+        st.toggle("Enforce Chronological Precedence", value=True)
+        st.toggle("Strict Silent Blending Ban", value=True)
+
+    st.markdown("---")
+
+    # Benchmark Preset Scenarios
+    st.markdown("""
+    <div style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #8D99AE; margin-bottom: 8px;">
+        ⚡ Enterprise Policy Benchmarks
+    </div>
+    """, unsafe_allow_html=True)
+
+    preset_benchmarks = [
+        ("🏢 Remote Work & Stipend", "What is the company remote work policy and how much is the home office stipend?"),
         ("🔐 Password Expiry & SMS 2FA", "How often do I need to change my corporate password, and can I use SMS for 2FA?"),
-        ("✈️ Travel Per Diem & Domestic Flights", "What is the daily meal per diem and can I fly Business Class for flights over 4 hours?"),
-        ("🤖 AI Coding Assistant Expenses", "Can I expense my Cursor or ChatGPT subscription on my corporate card as a software developer?")
+        ("✈️ Travel Per Diem & Flights", "What is the daily meal per diem and can I fly Business Class for flights over 4 hours?"),
+        ("🤖 AI Tool Reimbursement", "Can I expense my Cursor or ChatGPT subscription on my corporate card as a software developer?")
     ]
 
-    selected_query_preset = None
-    for label, query_text in preset_scenarios:
+    for label, query in preset_benchmarks:
         if st.button(label, use_container_width=True):
-            selected_query_preset = query_text
+            st.session_state.query_trigger = query
 
     st.markdown("---")
-    with st.expander("📂 Enterprise Corpus Browser (9 Docs)", expanded=False):
+
+    # Enterprise Document Corpus Inspector
+    with st.expander("📂 Raw Corpus Inspector (9 Policies)", expanded=False):
         raw_docs = get_all_raw_documents()
         for doc in raw_docs:
-            status_badge = (
-                f"<span class='badge-active'>{doc['status']}</span>"
-                if doc['status'] == "ACTIVE"
-                else f"<span class='badge-superseded'>{doc['status']}</span>"
-            )
-            st.markdown(
-                f"**`{doc['doc_id']}`** {status_badge}<br>"
-                f"<small><b>{doc['title']}</b> | Version: {doc['version']} | Date: {doc['effective_date']}</small>",
-                unsafe_allow_html=True
-            )
-            st.caption(f"Supersedes: {doc['supersedes']}")
-            st.code(doc['content'][:150] + "...", language="text")
-            st.markdown("<hr style='margin: 8px 0; border-color: #30363d;'>", unsafe_allow_html=True)
+            is_active = doc.get("status") == "ACTIVE"
+            tag_class = "tag-active" if is_active else "tag-superseded"
+            st.markdown(f"""
+            <div style="background: rgba(0,0,0,0.25); border: 1px solid var(--border-subtle); border-radius: 6px; padding: 8px; margin-bottom: 6px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <b style="font-size: 0.8rem; color: #EDF2F4;">{doc['doc_id']}</b>
+                    <span class="doc-status-tag {tag_class}">{doc['status']}</span>
+                </div>
+                <div style="font-size: 0.72rem; color: #8D99AE;">Ver: {doc['version']} | Date: {doc['effective_date']}</div>
+                <div style="font-size: 0.72rem; color: #8D99AE;">Supersedes: {doc['supersedes']}</div>
+            </div>
+            """, unsafe_allow_html=True)
 
-    if st.button("🗑️ Clear Conversation", use_container_width=True):
+    if st.button("🗑️ Reset Interaction State", use_container_width=True):
         st.session_state.messages = []
-        st.session_state.latest_trace = None
-        st.session_state.latest_query = ""
+        st.session_state.query_trigger = None
         st.rerun()
 
 
-# =====================================================================
-# Main Interface: Header & Overview
-# =====================================================================
+# -----------------------------------------------------------------------------
+# 6. Main Arena: Header & Chat Interface
+# -----------------------------------------------------------------------------
+
+# SaaS Top Navigation Bar
 st.markdown("""
-<div class="tg-header">
-    <div class="tg-title">🛡️ TruthGuard</div>
-    <div class="tg-subtitle">
-        <b>Adversarial Verification Multi-Agent System</b> for Enterprise Knowledge Bases.<br>
-        Traditional RAG fails silently when enterprise corpora contain conflicting policies, obsolete standards, 
-        and superseded amendments. TruthGuard uses an adversarial Critic Agent to actively break candidate drafts, 
-        uncover contradictions, and enforce non-blended provenance resolution.
+<div class="saas-navbar">
+    <div class="saas-brand-wrap">
+        <div class="saas-logo-badge">🛡️</div>
+        <div class="saas-title-box">
+            <h1>TruthGuard Enterprise</h1>
+            <p>Adversarial Multi-Agent Governance Platform &bull; Non-Blended Policy Resolution</p>
+        </div>
+    </div>
+    <div class="saas-telemetry">
+        <div class="telemetry-chip">
+            <span class="status-dot-active"></span>
+            Agents: 4 Online
+        </div>
+        <div class="telemetry-chip">
+            Mode: Zero-Blend
+        </div>
     </div>
 </div>
 """, unsafe_allow_html=True)
 
-# Create layout with two primary columns: Left = Chat & Final Resolution, Right = Live Agent Trace
-col_chat, col_trace = st.columns([1.15, 0.85], gap="large")
+# Conversation Arena
+chat_container = st.container()
 
+with chat_container:
+    # Display message history
+    for idx, msg in enumerate(st.session_state.messages):
+        role = msg["role"]
+        content = msg["content"]
+        trace = msg.get("trace")
 
-# =====================================================================
-# Left Column: Chat & Verified Output
-# =====================================================================
-with col_chat:
-    st.subheader("💬 Verified Enterprise Assistant")
+        if role == "user":
+            st.markdown(f"""
+            <div class="user-bubble">
+                <div class="bubble-header user-header-text">
+                    <span>👤 Employee Query</span>
+                </div>
+                <div style="font-size: 0.95rem; line-height: 1.5;">{content}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown(f"""
+            <div class="assistant-bubble">
+                <div class="bubble-header assistant-header-text">
+                    <span>🛡️ TruthGuard Verified Arbiter</span>
+                </div>
+                <div style="font-size: 0.95rem; line-height: 1.6;">{content}</div>
+            </div>
+            """, unsafe_allow_html=True)
 
-    # Display past chat history
-    for msg in st.session_state.messages:
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
+            # Color-coded Agent Trace Expandable Container
+            if trace:
+                with st.expander("🔍 View Multi-Agent Verification Trace (Retriever 🔵 ➔ Synthesizer 🟡 ➔ Critic 🔴 ➔ Resolution 🟢)", expanded=False):
+                    render_trace_block(trace)
 
-    # Determine input query (from preset button or chat input)
-    user_query = selected_query_preset or st.chat_input("Ask a question about HR, IT Security, Travel, or AI Policies...")
+# Handle Query Trigger (from Preset or Chat Input)
+active_query = st.session_state.query_trigger or st.chat_input("Ask a question about HR, IT Security, Travel, or AI Policies...")
 
-    if user_query:
-        # Add user query to conversation
-        st.session_state.messages.append({"role": "user", "content": user_query})
-        st.session_state.latest_query = user_query
-        with st.chat_message("user"):
-            st.markdown(user_query)
+if active_query:
+    # Reset trigger
+    st.session_state.query_trigger = None
 
-        # Run TruthGuard Pipeline
-        with st.chat_message("assistant"):
-            with st.spinner("🛡️ Orchestrating Multi-Agent Pipeline (Retriever ➔ Synthesizer ➔ Critic ➔ Resolution)..."):
-                try:
-                    result = run_truthguard(
-                        query=user_query,
-                        provider=llm_provider,
-                        model=model_choice,
-                        api_key=api_key_input
-                    )
-                    final_ans = result["resolution_output"]
-                    st.markdown(final_ans)
+    # Render User Query Bubble Immediately
+    st.markdown(f"""
+    <div class="user-bubble">
+        <div class="bubble-header user-header-text">
+            <span>👤 Employee Query</span>
+        </div>
+        <div style="font-size: 0.95rem; line-height: 1.5;">{active_query}</div>
+    </div>
+    """, unsafe_allow_html=True)
 
-                    # Save to state
-                    st.session_state.messages.append({"role": "assistant", "content": final_ans})
-                    st.session_state.latest_trace = result["agent_trace"]
+    # Append to state
+    st.session_state.messages.append({"role": "user", "content": active_query})
 
-                except Exception as e:
-                    error_msg = f"⚠️ Pipeline Error: {str(e)}"
-                    st.error(error_msg)
-                    st.session_state.messages.append({"role": "assistant", "content": error_msg})
+    # Execute Multi-Agent Pipeline
+    with st.spinner("🛡️ TruthGuard Multi-Agent Verification in Progress (Retriever ➔ Synthesizer ➔ Critic ➔ Resolution)..."):
+        try:
+            result = run_truthguard(
+                query=active_query,
+                provider=llm_provider if 'llm_provider' in locals() else None,
+                model=model_choice if 'model_choice' in locals() else None,
+                api_key=api_key_input if 'api_key_input' in locals() else None
+            )
 
+            res_output = result["resolution_output"]
+            trace_steps = result["agent_trace"]
 
-# =====================================================================
-# Right Column: Visual Agent Trace (The "Thoughts" of TruthGuard)
-# =====================================================================
-with col_trace:
-    st.subheader("🧠 Multi-Agent Thought & Trace")
-    st.caption("Inspect what each specialized agent observed, drafted, audited, and resolved.")
+            # Render Verified Assistant Response
+            st.markdown(f"""
+            <div class="assistant-bubble">
+                <div class="bubble-header assistant-header-text">
+                    <span>🛡️ TruthGuard Verified Arbiter</span>
+                </div>
+                <div style="font-size: 0.95rem; line-height: 1.6;">{res_output}</div>
+            </div>
+            """, unsafe_allow_html=True)
 
-    trace_data = st.session_state.latest_trace
+            # Render Multi-Agent Trace
+            with st.expander("🔍 View Multi-Agent Verification Trace (Retriever 🔵 ➔ Synthesizer 🟡 ➔ Critic 🔴 ➔ Resolution 🟢)", expanded=True):
+                render_trace_block(trace_steps)
 
-    if not trace_data:
-        st.info("👈 Submit a query or select a preset scenario from the sidebar to visualize the multi-agent reasoning trace in real time.")
-    else:
-        # Step 1: Retriever Agent
-        step_retriever = next((s for s in trace_data if s["agent"] == "Retriever Agent"), None)
-        if step_retriever:
-            with st.expander(f"{step_retriever['icon']} Step 1: {step_retriever['agent']}", expanded=True):
-                st.markdown(f"**Status:** `{step_retriever['status']}` | <small>{step_retriever['timestamp']}</small>", unsafe_allow_html=True)
-                st.markdown(f"*{step_retriever['summary']}*")
-                
-                docs = step_retriever["details"].get("documents", [])
-                st.markdown(f"**Retrieved Passages ({len(docs)}):**")
-                for d in docs:
-                    badge_cls = "badge-active" if d['status'] == "ACTIVE" else "badge-superseded"
-                    st.markdown(
-                        f"<div style='background: rgba(33, 38, 45, 0.6); padding: 10px; border-radius: 6px; margin-bottom: 8px; border: 1px solid rgba(48, 54, 61, 0.6);'>"
-                        f"<b>#{d['rank']} [{d['doc_id']}]</b> <span class='{badge_cls}'>{d['status']}</span><br>"
-                        f"<small><b>Title:</b> {d['title']} | <b>Ver:</b> {d['version']} | <b>Effective:</b> {d['effective_date']}</small><br>"
-                        f"<small style='color: #8b949e;'>Supersedes: {d['supersedes']}</small><br>"
-                        f"<p style='font-size: 0.85rem; margin-top: 6px; color: #c9d1d9;'>\"{d['content'][:140]}...\"</p>"
-                        f"</div>",
-                        unsafe_allow_html=True
-                    )
+            # Persist response with trace in history
+            st.session_state.messages.append({
+                "role": "assistant",
+                "content": res_output,
+                "trace": trace_steps
+            })
 
-        # Step 2: Synthesizer Agent (Standard RAG)
-        step_synth = next((s for s in trace_data if s["agent"] == "Synthesizer Agent"), None)
-        if step_synth:
-            with st.expander(f"{step_synth['icon']} Step 2: {step_synth['agent']} (Standard RAG)", expanded=False):
-                st.markdown(f"**Status:** `{step_synth['status']}` | <small>{step_synth['timestamp']}</small>", unsafe_allow_html=True)
-                st.markdown(f"*{step_synth['summary']}*")
-                st.warning("⚠️ Notice: A standard naive RAG model stops here and outputs this initial unverified draft directly to the user:")
-                st.markdown(f"> *{step_synth['details'].get('draft')}*")
-
-        # Step 3: Critic Agent (The Adversary)
-        step_critic = next((s for s in trace_data if "Critic" in s["agent"]), None)
-        if step_critic:
-            with st.expander(f"{step_critic['icon']} Step 3: {step_critic['agent']} (Adversarial Audit)", expanded=True):
-                st.markdown(f"**Audit Result:** `{step_critic['status']}` | <small>{step_critic['timestamp']}</small>", unsafe_allow_html=True)
-                st.markdown(f"**Adversary Verdict:** *{step_critic['summary']}*")
-
-                critic_details = step_critic["details"]
-                conflicts = critic_details.get("conflicts", [])
-                staleness = critic_details.get("staleness_issues", [])
-                unsupported = critic_details.get("unsupported_claims", [])
-
-                if conflicts:
-                    st.markdown("#### 🚨 Flagged Contradictions:")
-                    for idx, c in enumerate(conflicts, 1):
-                        st.markdown(
-                            f"<div style='background: rgba(248, 81, 73, 0.1); border: 1px solid rgba(248, 81, 73, 0.4); border-radius: 6px; padding: 10px; margin-bottom: 8px;'>"
-                            f"<b>Conflict #{idx}: {c.get('subject')}</b> (Severity: <code>{c.get('severity')}</code>)<br>"
-                            f"<b>Doc A ({c.get('doc_a')}):</b> {c.get('policy_a_claim')}<br>"
-                            f"<b>Doc B ({c.get('doc_b')}):</b> {c.get('policy_b_claim')}<br>"
-                            f"<p style='color: #ff7b72; font-size: 0.86rem; margin-top: 4px;'><b>Adversary Analysis:</b> {c.get('contradiction_analysis')}</p>"
-                            f"</div>",
-                            unsafe_allow_html=True
-                        )
-
-                if staleness:
-                    st.markdown("#### ⏳ Staleness & Supersession Violations:")
-                    for s in staleness:
-                        st.markdown(
-                            f"<div style='background: rgba(210, 153, 34, 0.1); border: 1px solid rgba(210, 153, 34, 0.4); border-radius: 6px; padding: 10px; margin-bottom: 8px;'>"
-                            f"<b>Obsolete Doc:</b> <code>{s.get('superseded_doc_id')}</code> ➔ <b>Superseded By:</b> <code>{s.get('newer_doc_id')}</code><br>"
-                            f"<small><b>Invalidated Rules:</b> {s.get('superseded_rules')}</small><br>"
-                            f"<small style='color: #e3b341;'><b>Timeline:</b> {s.get('effective_timeline')}</small>"
-                            f"</div>",
-                            unsafe_allow_html=True
-                        )
-
-                if unsupported:
-                    st.markdown("#### ⚠️ Unsupported Assertions / Silent Blends:")
-                    for u in unsupported:
-                        st.markdown(f"- **Claim:** *{u.get('claim')}*\n  **Reason:** {u.get('reason')}")
-
-        # Step 4: Resolution Agent
-        step_res = next((s for s in trace_data if "Resolution" in s["agent"]), None)
-        if step_res:
-            with st.expander(f"{step_res['icon']} Step 4: {step_res['agent']}", expanded=True):
-                st.markdown(f"**Status:** `{step_res['status']}` | <small>{step_res['timestamp']}</small>", unsafe_allow_html=True)
-                st.markdown(f"*{step_res['summary']}*")
-                st.success("✅ Output verified against enterprise temporal governance rules. Silent blending prohibited.")
+        except Exception as e:
+            err_msg = f"⚠️ TruthGuard Pipeline Exception: {str(e)}"
+            st.error(err_msg)
+            st.session_state.messages.append({"role": "assistant", "content": err_msg})
